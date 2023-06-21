@@ -20,10 +20,99 @@ migrate = Migrate(app, db)
 
 db.init_app(app)
 
+api = Api(app)
 
 @app.route('/')
 def home():
     return ''
+
+class Campers(Resource):
+
+    def get(self):
+        campers = [camper.to_dict(only=('id', 'name', 'age')) for camper in Camper.query.all()]
+        return campers, 200
+
+    def post(self):
+        try:
+            data = request.get_json()
+            new_camper = Camper(
+                name=data.get('name'),
+                age=data.get('age')
+            )
+            db.session.add(new_camper)
+            db.session.commit()
+            return new_camper.to_dict(), 201
+        except:
+            return {"error": "validation error"}
+
+api.add_resource(Campers, '/campers')    
+
+class CampersById(Resource):
+
+    def get(self, id):
+        try:
+            campers = Camper.query.filter_by(id=id).first().to_dict()
+            return campers, 200
+        except:
+            return {"error": "404: Camper not found"}, 404
+        
+    def patch(self, id):
+        data = request.get_json()
+        try:
+            camper = Camper.query.filter_by(id=id).first()
+        except:
+            return {"error": "404: Camper not found"}
+        try:
+            for attr in data:
+                setattr(camper, attr, data[attr])
+            db.session.add(camper)
+            db.session.commit()
+            return camper.to_dict(), 202
+        except:
+            return {"error": "validation error"}, 400
+
+api.add_resource(CampersById, '/campers/<int:id>')    
+
+class Activities(Resource):
+
+    def get(self):
+        activities = [activity.to_dict() for activity in Activity.query.all()]
+        return activities, 200
+
+api.add_resource(Activity, '/activities')
+
+class ActivitiesById(Resource):
+
+    def delete(self, id):
+        try:
+            Activity.query.filter_by(id=id).first().delete()
+            db.session.commit()
+            return {}, 204
+        except:
+            return {"error": "404: Activity not found"}, 404
+
+api.add_resource(ActivitiesById, '/activities/<int:id>')    
+
+class Signups(Resource):
+    def post(self): 
+        try:
+            signup = Signup(
+                time= request.json["time"],
+                camper_id = request.json["camper_id"],
+                activity_id = request.json["activity_id"]
+            )
+            
+            db.session.add(signup)
+            db.session.commit()
+            
+            return signup.activity.to_dict(), 201
+        
+        except:
+            return {
+  "error": "400: Validation error"
+}, 400
+        
+api.add_resource(Signups, '/signups')
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
