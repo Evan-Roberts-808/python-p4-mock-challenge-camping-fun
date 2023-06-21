@@ -46,7 +46,7 @@ class Campers(Resource):
             db.session.commit()
             return new_camper.to_dict(), 201
         except:
-            return {"error": "validation error"}
+            return {"error": "validation error"}, 400
 
 
 api.add_resource(Campers, '/campers')
